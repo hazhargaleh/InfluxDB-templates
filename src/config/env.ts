@@ -1,6 +1,19 @@
 import fs from "fs";
 import dotenv from "dotenv";
 dotenv.config({ path: ".env" });
+
+function parseMacMap(envVar: string | undefined): Record<string, string> {
+  if (!envVar) return {};
+  try {
+    const parsed = JSON.parse(envVar);
+    if (typeof parsed !== "object" || Array.isArray(parsed)) return {};
+    return parsed as Record<string, string>;
+  } catch {
+    console.warn(`[config] Failed to parse MAC map: ${envVar}`);
+    return {};
+  }
+}
+
 export const config = {
   mqtt: {
     protocol: process.env.MQTT_PROTOCOL ?? 'mqtt',
@@ -23,5 +36,8 @@ export const config = {
   bufferSize: Number(process.env.BUFFER_SIZE ?? 500),
   flushInterval: Number(process.env.FLUSH_INTERVAL ?? 5000),
   httpPort: Number(process.env.HTTP_PORT ?? 3002),
-  companyCode: Number(process.env.COMPANY_CODE ?? 1177), // Ruuvi as default Manufacturer
+  companyCode: Number(process.env.COMPANY_CODE ?? 1177),
+
+  gatewayNames: parseMacMap(process.env.GATEWAY_NAMES),
+  tagNames: parseMacMap(process.env.TAG_NAMES),
 };

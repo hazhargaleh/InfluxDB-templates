@@ -63,10 +63,14 @@ export function startMqtt() {
       const tagMac = parts[2].replace(/[^A-F0-9:]/gi, "");
       // Created by RuuviData
       const timestamp = Number(data.ts) * 1000;
+      const gatewayName = config.gatewayNames[gatewayMac] ?? gatewayMac;
+      const tagName = config.tagNames[tagMac] ?? tagMac;
       const sample = new RuuviData(
         data.coords ?? "",
         tagMac,
+        tagName,
         gatewayMac,
+        gatewayName,
         "ruuvi-gateway",
         data.data,
         data.rssi,
