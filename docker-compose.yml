@@ -1,0 +1,135 @@
+version: '3.8'
+
+services:
+  ruuvi-ingestion:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ruuvi-iot-ingestion
+    environment:
+      # MQTT Configuration
+      MQTT_PROTOCOL: mqtt
+      MQTT_HOST: mosquitto
+      MQTT_PORT: 1883
+      MQTT_TOPIC: "ruuvi/#"
+      MQTT_USERNAME: ""
+      MQTT_PASSWORD: ""
+
+      # Storage Backend (influxdb | mariadb | both)
+      STORAGE_BACKEND: both
+
+      # InfluxDB Configuration
+      INFLUX_URL: http://influxdb:8086
+      INFLUX_ORG: myorg
+      INFLUX_BUCKET: ruuvi
+      INFLUX_TOKEN: mytoken
+
+      # MariaDB Configuration
+      MARIA_HOST: mariadb
+      MARIA_PORT: 3306
+      MARIA_USER: ruuvi
+      MARIA_PASSWORD: ruuvi_pass
+      MARIA_DATABASE: ruuvi
+
+      # MariaDB Retention (optional)
+      MARIA_RETENTION_ENABLED: "true"
+      MARIA_RETENTION_DAYS: 30
+      MARIA_DOWNSAMPLE_ENABLED: "false"
+      MARIA_DOWNSAMPLE_RETENTION_DAYS: 365
+      MARIA_DOWNSAMPLE_DELETE_RAW: "false"
+      MARIA_MAINTENANCE_INTERVAL_HOURS: 6
+
+      # Buffer Configuration
+      BUFFER_SIZE: 500
+      MARIA_BUFFER_SIZE: 100
+      FLUSH_INTERVAL: 5000
+
+      # HTTP API
+      HTTP_PORT: 3002
+      HTTP_API_KEY: your-secure-api-key-here
+
+      # RuuviTag Configuration
+      COMPANY_CODE: 1177
+      GATEWAY_NAMES: '{"AABBCCDDEEFF":"Gateway-1"}'
+      TAG_NAMES: '{"112233445566":"Tag-Living-Room"}'
+
+    ports:
+      - "3002:3002"
+
+    depends_on:
+      - mosquitto
+      - influxdb
+      - mariadb
+
+    networks:
+      - ruuvi-network
+
+    restart: unless-stopped
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3002/health", "-H", "x-api-key: your-secure-api-key-here"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+
+  mosquitto:
+    image: eclipse-mosquitto:latest
+    container_name: mosquitto
+    ports:
+      - "1883:1883"
+      - "9001:9001"
+    volumes:
+      - mosquitto_data:/mosquitto/data
+      - mosquitto_logs:/mosquitto/log
+    networks:
+      - ruuvi-network
+    restart: unless-stopped
+
+  influxdb:
+    image: influxdb:latest
+    container_name: influxdb
+    environment:
+      INFLUXDB_DB: ruuvi
+      INFLUXDB_ADMIN_USER: admin
+      INFLUXDB_ADMIN_PASSWORD: admin
+      INFLUXDB_ADMIN_ENABLED: "true"
+      INFLUXDB_ORGANIZATION: myorg
+      INFLUXDB_BUCKET: ruuvi
+      INFLUXDB_RETENTION: 30d
+      INFLUXDB_TOKEN: mytoken
+    ports:
+      - "8086:8086"
+    volumes:
+      - influxdb_data:/var/lib/influxdb2
+    networks:
+      - ruuvi-network
+    restart: unless-stopped
+
+  mariadb:
+    image: mariadb:latest
+    container_name: mariadb
+    environment:
+      MYSQL_ROOT_PASSWORD: root_pass
+      MYSQL_DATABASE: ruuvi
+      MYSQL_USER: ruuvi
+      MYSQL_PASSWORD: ruuvi_pass
+    ports:
+      - "3306:3306"
+    volumes:
+      - mariadb_data:/var/lib/mysql
+      - ./schema/mariadb_init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - ruuvi-network
+    restart: unless-stopped
+
+volumes:
+  mosquitto_data:
+  mosquitto_logs:
+  influxdb_data:
+  mariadb_data:
+
+networks:
+  ruuvi-network:
+    driver: bridge
+

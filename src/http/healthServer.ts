@@ -1,11 +1,15 @@
 import Fastify from "fastify";
+import rateLimit from "@fastify/rate-limit";
 import { config } from "../config/env.js";
 import { register, collectDefaultMetrics } from "prom-client";
 export async function startHttpServer() {
   const fastify = Fastify();
+  await fastify.register(rateLimit, {
+    max: 100, // 100 requests
+    timeWindow: '1 minute'
+  });
   fastify.addHook("onRequest", async (req, reply) => {
-    // We're using the same API key for HTTP; perhaps we should create a separate API key!
-    if (req.headers['x-api-key'] !== process.env.INFLUX_TOKEN) {
+    if (req.headers['x-api-key'] !== config.httpApiKey) {
       reply.code(401).send();
     }
   });

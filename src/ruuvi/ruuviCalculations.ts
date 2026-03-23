@@ -27,7 +27,6 @@ export function frostPoint(temperatureC: number, relativeHumidityPct: number): n
   if (temperatureC >= 0) return dewPoint(temperatureC, relativeHumidityPct);
   const a = 22.587;
   const b = 273.86;
-  const tempK = temperatureC + 273.15;
   const alpha = Math.log(relativeHumidityPct / 100) + (a * temperatureC) / (b + temperatureC);
   return (b * alpha) / (a - alpha);
 }

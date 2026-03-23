@@ -1,5 +1,6 @@
 import fs from "fs";
 import dotenv from "dotenv";
+import { z } from "zod";
 dotenv.config({ path: ".env" });
 
 function parseMacMap(envVar: string | undefined): Record<string, string> {
@@ -14,7 +15,52 @@ function parseMacMap(envVar: string | undefined): Record<string, string> {
   }
 }
 
-export const config = {
+const configSchema = z.object({
+  mqtt: z.object({
+    protocol: z.string(),
+    host: z.string(),
+    port: z.number(),
+    topic: z.string(),
+    username: z.string().optional(),
+    password: z.string().optional(),
+    ca: z.instanceof(Buffer).optional(),
+    cert: z.instanceof(Buffer).optional(),
+    key: z.instanceof(Buffer).optional(),
+    rejectUnauthorized: z.boolean(),
+  }),
+  storageBackend: z.enum(['influxdb', 'mariadb', 'both']),
+  influx: z.object({
+    url: z.string().url(),
+    org: z.string().min(1),
+    bucket: z.string().min(1),
+    token: z.string().min(1),
+  }),
+  maria: z.object({
+    host: z.string(),
+    port: z.number(),
+    user: z.string(),
+    password: z.string(),
+    database: z.string(),
+  }),
+  mariaRetention: z.object({
+    enabled: z.boolean(),
+    retentionDays: z.number(),
+    downsampleEnabled: z.boolean(),
+    downsampleRetentionDays: z.number(),
+    downsampleDeleteRaw: z.boolean(),
+    maintenanceIntervalHours: z.number(),
+  }),
+  mariaBufferSize: z.number(),
+  bufferSize: z.number(),
+  flushInterval: z.number(),
+  httpPort: z.number(),
+  companyCode: z.number(),
+  httpApiKey: z.string().min(1),
+  gatewayNames: z.record(z.string()),
+  tagNames: z.record(z.string()),
+});
+
+export const config = configSchema.parse({
   mqtt: {
     protocol: process.env.MQTT_PROTOCOL ?? 'mqtt',
     host: process.env.MQTT_HOST ?? 'localhost',
@@ -54,7 +100,7 @@ export const config = {
   flushInterval: Number(process.env.FLUSH_INTERVAL ?? 5000),
   httpPort: Number(process.env.HTTP_PORT ?? 3002),
   companyCode: Number(process.env.COMPANY_CODE ?? 1177),
-
+  httpApiKey: process.env.HTTP_API_KEY!,
   gatewayNames: parseMacMap(process.env.GATEWAY_NAMES),
   tagNames: parseMacMap(process.env.TAG_NAMES),
-};
+});

@@ -1,4 +1,5 @@
 import mqtt from 'mqtt';
+import { Gauge, Counter } from 'prom-client';
 import { config } from '../config/env.js';
 import { logger } from '../logger/logger.js';
 import { MessageBuffer } from '../pipeline/messageBuffer.js';
@@ -19,13 +20,29 @@ import {
 } from '../ruuvi/ruuviCalculations.js';
 
 // ----------------------
+// Metrics
+// ----------------------
+const mqttConnected = new Gauge({
+  name: 'ruuvi_mqtt_connected',
+  help: 'MQTT connection status (1=connected, 0=disconnected)',
+});
+const mqttMessagesProcessed = new Counter({
+  name: 'ruuvi_mqtt_messages_processed_total',
+  help: 'Total MQTT messages processed successfully',
+});
+const mqttMessagesInvalid = new Counter({
+  name: 'ruuvi_mqtt_messages_invalid_total',
+  help: 'Total invalid MQTT messages',
+});
+
+// ----------------------
 // Buffers
 // ----------------------
 const influxBuffer =
-  config.storageBackend !== 'mariadb' ? new MessageBuffer<RuuviData>(config.bufferSize, influxWriteBatch) : null;
+  config.storageBackend !== 'mariadb' ? new MessageBuffer<RuuviData>(config.bufferSize, influxWriteBatch, 'influx') : null;
 
 const mariaBuffer =
-  config.storageBackend !== 'influxdb' ? new MessageBuffer<RuuviData>(config.mariaBufferSize, mariaWriteBatch) : null;
+  config.storageBackend !== 'influxdb' ? new MessageBuffer<RuuviData>(config.mariaBufferSize, mariaWriteBatch, 'maria') : null;
 
 setInterval(() => {
   influxBuffer?.flush();
@@ -53,6 +70,7 @@ export function startMqtt() {
 
   client.on('connect', () => {
     logger.info(`MQTT connected to ${config.mqtt.protocol}://${config.mqtt.host}:${config.mqtt.port}`);
+    mqttConnected.set(1);
     client.subscribe(config.mqtt.topic);
   });
 
@@ -65,6 +83,7 @@ export function startMqtt() {
       const parsed = ruuviSchema.safeParse(JSON.parse(msg.toString()));
       if (!parsed.success) {
         logger.warn({ errors: parsed.error }, 'Invalid Ruuvi payload');
+        mqttMessagesInvalid.inc();
         return;
       }
 
@@ -136,11 +155,16 @@ export function startMqtt() {
 
       influxBuffer?.push(sample);
       mariaBuffer?.push(sample);
+      mqttMessagesProcessed.inc();
     } catch (err) {
       logger.warn({ err, topic }, 'MQTT message processing failed');
     }
   });
 
-  client.on('error', (err) => logger.error({ err }, 'MQTT connection error'));
+  client.on('error', (err) => {
+    logger.error({ err }, 'MQTT connection error');
+    mqttConnected.set(0);
+  });
   client.on('reconnect', () => logger.info('MQTT reconnecting...'));
+  client.on('offline', () => mqttConnected.set(0));
 }
