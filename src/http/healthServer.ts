@@ -46,12 +46,28 @@ export async function startHttpServer() {
     let cfgPath = path.join(GW_CONFIG_DIR, 'gw_cfg.json'); // fallback
 
     if (gwMac) {
-      const specificPath = path.join(GW_CONFIG_DIR, `${gwMac}.json`);
-      if (fs.existsSync(specificPath)) {
-        cfgPath = specificPath;
-        logger.info({ gwMac }, 'Gateway config: serving specific config');
-      } else {
-        logger.info({ gwMac }, 'Gateway config: falling back to default');
+      // First, try to find config by gateway name from GATEWAY_NAMES
+      const gatewayName = config.gatewayNames[gwMac];
+      if (gatewayName) {
+        const nameNormalized = gatewayName.replace(/ /g, '-').toLowerCase();
+        const namePath = path.join(GW_CONFIG_DIR, `${nameNormalized}.json`);
+        if (fs.existsSync(namePath)) {
+          cfgPath = namePath;
+          logger.info({ gwMac, gatewayName }, 'Gateway config: serving config by name');
+        } else {
+          logger.warn({ gwMac, gatewayName, nameNormalized }, 'Gateway config: name-based config not found');
+        }
+      }
+
+      // If not found by name, try MAC-based
+      if (cfgPath === path.join(GW_CONFIG_DIR, 'gw_cfg.json')) {
+        const specificPath = path.join(GW_CONFIG_DIR, `${gwMac}.json`);
+        if (fs.existsSync(specificPath)) {
+          cfgPath = specificPath;
+          logger.info({ gwMac }, 'Gateway config: serving MAC-based config');
+        } else {
+          logger.info({ gwMac }, 'Gateway config: falling back to default');
+        }
       }
     }
 
