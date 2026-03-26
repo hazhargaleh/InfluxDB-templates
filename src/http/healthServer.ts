@@ -41,21 +41,22 @@ export async function startHttpServer() {
     }
 
     // Resolving the configuration file based on the gateway’s MAC address
-    const gwMac = (req.headers['ruuvi_gw_mac'] as string | undefined)?.toUpperCase().replace(/[^A-F0-9:]/g, '');
+    const originalGwMac = (req.headers['ruuvi_gw_mac'] as string | undefined)?.toUpperCase();
+    const gwMac = originalGwMac?.replace(/[^A-F0-9:]/g, '');
 
     let cfgPath = path.join(GW_CONFIG_DIR, 'gw_cfg.json'); // fallback
 
-    if (gwMac) {
+    if (originalGwMac) {
       // First, try to find config by gateway name from GATEWAY_NAMES
-      const gatewayName = config.gatewayNames[gwMac];
+      const gatewayName = config.gatewayNames[originalGwMac];
       if (gatewayName) {
         const nameNormalized = gatewayName.replace(/ /g, '-').toLowerCase();
         const namePath = path.join(GW_CONFIG_DIR, `${nameNormalized}.json`);
         if (fs.existsSync(namePath)) {
           cfgPath = namePath;
-          logger.info({ gwMac, gatewayName }, 'Gateway config: serving config by name');
+          logger.info({ originalGwMac, gatewayName }, 'Gateway config: serving config by name');
         } else {
-          logger.warn({ gwMac, gatewayName, nameNormalized }, 'Gateway config: name-based config not found');
+          logger.warn({ originalGwMac, gatewayName, nameNormalized }, 'Gateway config: name-based config not found');
         }
       }
 
