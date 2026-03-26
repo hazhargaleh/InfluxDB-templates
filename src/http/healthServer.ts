@@ -41,7 +41,7 @@ export async function startHttpServer() {
     }
 
     // Resolving the configuration file based on the gateway’s MAC address
-    const originalGwMac = (req.headers['ruuvi_gw_mac'] as string | undefined)?.toUpperCase();
+    const originalGwMac = (req.headers['ruuvi_gw_mac'] as string | undefined)?.toUpperCase().trim();
     const gwMac = originalGwMac?.replace(/[^A-F0-9:]/g, '');
 
     let cfgPath = path.join(GW_CONFIG_DIR, 'gw_cfg.json'); // fallback
