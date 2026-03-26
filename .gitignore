@@ -9,9 +9,9 @@ lib/
 *.tsbuildinfo
 
 # Environment variables / secrets
-.env
-.env.*
-!.env.example
+config/.env
+config/.env.example
+!config/.env.example
 
 # Logs
 logs/
@@ -68,3 +68,4 @@ influx-dump/
 *.tgz
 *.tar
 *.zip
+/config/gw_cfg

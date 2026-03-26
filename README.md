@@ -91,10 +91,16 @@ npm install
 2. Create a `.env` file from the example:
 
 ```bash
+cd config
 cp .env.example .env
 ```
+3. Create the Gateways configuration
+```bash
+cp -r gw_cfg-example gw_cfg
+```
+And add your gateways configuration to `gw_cfg/` as JSON files named after the gateway MAC address, and according to [JSON schema](https://docs.ruuvi.com/ruuvi-gateway-firmware/data-formats/gateway-configuration#json-schema) Gateway configuration
 
-3. Generate a secure API key and add it to your `.env`:
+4. Generate a secure API key and add it to your `.env`:
 
 ```bash
 # Linux / macOS
@@ -104,10 +110,11 @@ openssl rand -hex 32
 [Convert]::ToBase64String((1..32 | ForEach-Object { Get-Random -Max 256 }))
 
 # One-liner — appends directly to .env (Linux / macOS)
+echo "GW_CFG_BEARER_TOKEN=$(openssl rand -hex 32)" >> .env
 echo "HTTP_API_KEY=$(openssl rand -hex 32)" >> .env
+echo "INFLUX_TOKEN=$(openssl rand -hex 32)" >> .env
 ```
-
-4. Edit `.env` and fill in your MQTT, InfluxDB, and MariaDB connection details.
+5.Edit `.env` and fill in your MQTT, InfluxDB, and MariaDB connection details, etc
 
 ---
 

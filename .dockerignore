@@ -11,8 +11,8 @@ coverage
 .gitignore
 
 # Env
-.env
-.env.*
+config/.env
+config/.env.example
 
 # Logs
 logs

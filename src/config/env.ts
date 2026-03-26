@@ -1,7 +1,7 @@
 import fs from "fs";
 import dotenv from "dotenv";
 import { z } from "zod";
-dotenv.config({ path: ".env" });
+dotenv.config({ path: "config/.env" });
 
 function parseMacMap(envVar: string | undefined): Record<string, string> {
   if (!envVar) return {};
@@ -16,6 +16,11 @@ function parseMacMap(envVar: string | undefined): Record<string, string> {
 }
 
 const configSchema = z.object({
+  gwCfg: z.object({
+    user: z.string().optional(),
+    password: z.string().optional(),
+    bearerToken: z.string().optional(),
+  }),
   mqtt: z.object({
     protocol: z.string(),
     host: z.string(),
@@ -61,6 +66,11 @@ const configSchema = z.object({
 });
 
 export const config = configSchema.parse({
+  gwCfg: {
+    user: process.env.GW_CFG_USER ?? 'ruuvi-cfg',
+    password: process.env.GW_CFG_PASSWORD ?? '',
+    bearerToken: process.env.GW_CFG_PASSWORD ?? '',
+  },
   mqtt: {
     protocol: process.env.MQTT_PROTOCOL ?? 'mqtt',
     host: process.env.MQTT_HOST ?? 'localhost',
