@@ -30,9 +30,11 @@
   "remote_cfg_use": true,
   "remote_cfg_url": "https://your-cfg-url.com/ruuvi-gw-cfg",
   "remote_cfg_auth_type": "basic",
+  "remote_cfg_auth_basic_user": "<GW_CFG_USER>",
+  "remote_cfg_auth_basic_pass": "<GW_CFG_PASSWORD>",
   "remote_cfg_use_ssl_client_cert": false,
   "remote_cfg_use_ssl_server_cert": false,
-  "remote_cfg_refresh_interval_minutes": 0,
+  "remote_cfg_refresh_interval_minutes": 60,
   "use_http_ruuvi": true,
   "use_http": true,
   "http_url": "https://network.ruuvi.com/record",
@@ -80,10 +82,7 @@
   "scan_channel_39": true,
   "scan_default": false,
   "scan_filter_allow_listed": true,
-  "scan_filter_list": [
-    "CE:52:DE:73:84:F2",
-    "AB:CD:EF:12:34:56"
-  ],
+  "scan_filter_list": ["CE:52:DE:73:84:F2", "AB:CD:EF:12:34:56"],
   "coordinates": "",
   "fw_update_url": "https://network.ruuvi.com/firmwareupdate"
 }
