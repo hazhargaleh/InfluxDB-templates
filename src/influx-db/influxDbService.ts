@@ -35,6 +35,7 @@ export async function writeBatch(samples: RuuviData[]) {
   const points = samples.map(toPoint);
   try {
     writeApi.writePoints(points);
+    await writeApi.flush();
   } catch (err) {
     logger.error({ err }, 'Influx write failed');
   }

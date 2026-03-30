@@ -20,6 +20,7 @@
     "test:coverage": "jest --coverage"
   },
   "dependencies": {
+    "@fastify/helmet": "^13.0.2",
     "@fastify/rate-limit": "^10.3.0",
     "@influxdata/influxdb-client": "^1.35.0",
     "advlib-ble-manufacturers": "^1.15.2",

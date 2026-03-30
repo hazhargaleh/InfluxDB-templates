@@ -1,9 +1,10 @@
 import Fastify, { FastifyRequest, FastifyReply } from 'fastify';
 import rateLimit from '@fastify/rate-limit';
+import helmet from '@fastify/helmet';
 import { config } from '../config/env.js';
 import { register, collectDefaultMetrics } from 'prom-client';
 import path from 'path';
-import fs from 'fs';
+import fs from 'fs/promises';
 import { logger } from '../logger/logger.js';
 import { GatewayConfigurationSchema } from '../ruuvi/gatewayConfigurationSchema.js';
 
@@ -56,16 +57,25 @@ async function handleGwCfg(req: FastifyRequest, reply: FastifyReply) {
     return reply.code(401).send({ error: 'Unauthorized' });
   }
 
-  // MAC resolution — from the header or from the name of the requested file
+  // MAC resolution — from the header or from the URL if it's a MAC
   const headerMac = normalizeMac((req.headers['ruuvi_gw_mac'] as string) || (req.headers['ruuvi-gw-mac'] as string));
 
   // Extract the MAC from the URL if the gateway is /ruuvi-gw-cfg/F32DEFE72E78.json
   const urlSegment = (req.params as Record<string, string>)['*'] ?? '';
-  const urlMac = normalizeMac(urlSegment.replace('.json', '').replace('gw_cfg', ''));
+  let urlMac: string | undefined;
+  let urlName: string | undefined;
+  if (urlSegment.endsWith('.json')) {
+    const potentialMac = normalizeMac(urlSegment.replace('.json', ''));
+    if (potentialMac && /^[A-F0-9]{12}$/.test(potentialMac)) {
+      urlMac = potentialMac;
+    } else {
+      urlName = urlSegment.replace('.json', '');
+    }
+  }
 
   const mac = headerMac ?? urlMac;
 
-  logger.info({ mac, headerMac, urlMac, url: req.url }, 'GW cfg request');
+  logger.info({ mac, headerMac, urlMac, urlName, url: req.url }, 'GW cfg request');
 
   // File resolution: name → MAC → fallback
   let cfgPath = path.join(GW_CONFIG_DIR, 'gw_cfg.json');
@@ -75,7 +85,7 @@ async function handleGwCfg(req: FastifyRequest, reply: FastifyReply) {
 
     if (gatewayName) {
       const namePath = path.join(GW_CONFIG_DIR, `${gatewayName.replace(/\s+/g, '-').toLowerCase()}.json`);
-      if (fs.existsSync(namePath)) {
+      if (await fileExists(namePath)) {
         cfgPath = namePath;
         logger.info({ mac, cfgPath }, 'Config resolved by name');
       }
@@ -83,19 +93,25 @@ async function handleGwCfg(req: FastifyRequest, reply: FastifyReply) {
 
     if (cfgPath === path.join(GW_CONFIG_DIR, 'gw_cfg.json')) {
       const macPath = path.join(GW_CONFIG_DIR, `${mac}.json`);
-      if (fs.existsSync(macPath)) {
+      if (await fileExists(macPath)) {
         cfgPath = macPath;
         logger.info({ mac, cfgPath }, 'Config resolved by MAC');
       }
     }
+  } else if (urlName) {
+    const namePath = path.join(GW_CONFIG_DIR, `${urlName}.json`);
+    if (await fileExists(namePath)) {
+      cfgPath = namePath;
+      logger.info({ urlName, cfgPath }, 'Config resolved by URL name');
+    }
   }
 
-  if (!fs.existsSync(cfgPath)) {
+  if (!await fileExists(cfgPath)) {
     logger.error({ cfgPath }, 'Config file not found');
     return reply.code(404).send({ error: 'Config not found' });
   }
 
-  const raw = fs.readFileSync(cfgPath, 'utf-8');
+  const raw = await fs.readFile(cfgPath, 'utf-8');
   const parsed = safeJsonParse(raw);
 
   if (!parsed) {
@@ -109,14 +125,30 @@ async function handleGwCfg(req: FastifyRequest, reply: FastifyReply) {
     return reply.code(500).send({ error: 'Invalid config schema' });
   }
 
+  // Add HTTP-specific fields as per schema
+  if (mac && !parsed.gw_mac) {
+    parsed.gw_mac = mac;
+  }
+  // Other fields like fw_ver, nrf52_fw_ver, storage can be added if needed, but optional
+
   reply.header('Content-Type', 'application/json');
-  return reply.send(raw);
+  return reply.send(JSON.stringify(parsed));
+}
+
+async function fileExists(filePath: string) {
+  try {
+    await fs.access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export async function startHttpServer() {
   const fastify = Fastify();
 
   await fastify.register(rateLimit, { max: 100, timeWindow: '1 minute' });
+  await fastify.register(helmet);
 
   fastify.addHook('onRequest', async (req, reply) => {
     if (req.url?.startsWith('/ruuvi-gw-cfg')) return;
