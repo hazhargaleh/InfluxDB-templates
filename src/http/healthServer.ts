@@ -10,6 +10,14 @@ import { GatewayConfigurationSchema } from '../ruuvi/gatewayConfigurationSchema.
 
 const GW_CONFIG_DIR = path.resolve('config/gw_cfg');
 
+function resolveCfgPath(fileBase: string): string | null {
+  if (!/^[A-Za-z0-9_-]+$/.test(fileBase)) return null;
+  const resolved = path.resolve(GW_CONFIG_DIR, `${fileBase}.json`);
+  const rootWithSep = GW_CONFIG_DIR.endsWith(path.sep) ? GW_CONFIG_DIR : `${GW_CONFIG_DIR}${path.sep}`;
+  if (!resolved.startsWith(rootWithSep)) return null;
+  return resolved;
+}
+
 function normalizeMac(mac?: string): string | undefined {
   if (!mac) return undefined;
   return mac.toUpperCase().replace(/[^A-F0-9]/g, '');
@@ -92,17 +100,19 @@ async function handleGwCfg(req: FastifyRequest, reply: FastifyReply) {
     }
 
     if (cfgPath === path.join(GW_CONFIG_DIR, 'gw_cfg.json')) {
-      const macPath = path.join(GW_CONFIG_DIR, `${mac}.json`);
-      if (await fileExists(macPath)) {
+      const macPath = resolveCfgPath(mac);
+      if (macPath && await fileExists(macPath)) {
         cfgPath = macPath;
         logger.info({ mac, cfgPath }, 'Config resolved by MAC');
       }
     }
   } else if (urlName) {
-    const namePath = path.join(GW_CONFIG_DIR, `${urlName}.json`);
-    if (await fileExists(namePath)) {
+    const namePath = resolveCfgPath(urlName);
+    if (namePath && await fileExists(namePath)) {
       cfgPath = namePath;
       logger.info({ urlName, cfgPath }, 'Config resolved by URL name');
+    } else if (!namePath) {
+      logger.warn({ urlName }, 'Rejected invalid GW config name');
     }
   }
 
