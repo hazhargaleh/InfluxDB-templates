@@ -166,9 +166,15 @@ export async function startHttpServer() {
     return register.metrics();
   });
 
-  // Both routes point to the same handler
-  fastify.get('/ruuvi-gw-cfg', handleGwCfg);
-  fastify.get('/ruuvi-gw-cfg/*', handleGwCfg);
+  // Both routes point to the same handler, which will resolve the config based on headers or URL
+  fastify.get('/ruuvi-gw-cfg',{
+    config: { rateLimit: { max: 100, timeWindow: '1 minute' } },
+   handler: handleGwCfg,
+  });
+  fastify.get('/ruuvi-gw-cfg/*', {
+    config: { rateLimit: { max: 100, timeWindow: '1 minute' } },
+    handler: handleGwCfg,
+  });
 
   await fastify.listen({ port: config.httpPort, host: '0.0.0.0' });
   logger.info(`HTTP server listening on :${config.httpPort}`);
