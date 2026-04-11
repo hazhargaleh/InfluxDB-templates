@@ -9,72 +9,79 @@ async function runDownsample(): Promise<void> {
     // We aggregate the full hours that are not yet present in `measurements_hourly`
     //  DATE_FORMAT rounds to the nearest hour
     const [result] = (await conn.query(`
-      INSERT INTO measurements_hourly (ts_hour, device_id, device_name, gateway_id, gateway_name,
-                                       sample_count,
-                                       rssi, temperature, humidity, pressure,
-                                       acceleration_x, acceleration_y, acceleration_z, acceleration_total,
+      INSERT INTO measurements_hourly (ts_hour, device_fk, sample_count,
+                                       rssi, rssi_min, rssi_max,
+                                       temperature, temperature_min, temperature_max,
+                                       humidity, humidity_min, humidity_max,
+                                       pressure, pressure_min, pressure_max,
+                                       acceleration_x, acceleration_x_min, acceleration_x_max,
+                                       acceleration_y, acceleration_y_min, acceleration_y_max,
+                                       acceleration_z, acceleration_z_min, acceleration_z_max,
+                                       acceleration_total, acceleration_total_min, acceleration_total_max,
                                        battery_voltage,
                                        movement_counter_delta,
-                                       absolute_humidity, dew_point, frost_point, vapor_pressure_deficit,
-                                       battery_percentage,
-                                       rssi_min, rssi_max,
-                                       temperature_min, temperature_max,
-                                       humidity_min, humidity_max,
-                                       pressure_min, pressure_max,
-                                       acceleration_x_min, acceleration_x_max,
-                                       acceleration_y_min, acceleration_y_max,
-                                       acceleration_z_min, acceleration_z_max,
-                                       acceleration_total_min, acceleration_total_max,
-                                       absolute_humidity_min, absolute_humidity_max,
-                                       dew_point_min, dew_point_max,
-                                       frost_point_min, frost_point_max,
-                                       vapor_pressure_deficit_min, vapor_pressure_deficit_max)
-      SELECT DATE_FORMAT(ts, '%Y-%m-%d %H:00:00')          AS ts_hour,
-             mc.device_id,
-             mc.device_name,
-             mc.gateway_id,
-             mc.gateway_name,
-             COUNT(*)                                      AS sample_count,
-             AVG(mc.rssi)                                     AS rssi,
-             ROUND(AVG(mc.temperature), 4)                              AS temperature,
-             ROUND(AVG(mc.humidity), 4)                                 AS humidity,
-             AVG(mc.pressure)                                 AS pressure,
-             ROUND(AVG(mc.acceleration_x), 4)                           AS acceleration_x,
-             ROUND(AVG(mc.acceleration_y), 4)                           AS acceleration_y,
-             ROUND(AVG(mc.acceleration_z), 4)                           AS acceleration_z,
-             ROUND(AVG(mc.acceleration_total), 4)                       AS acceleration_total,
-             ROUND(AVG(mc.battery_voltage), 3)                          AS battery_voltage,
-             MAX(mc.movement_counter) - MIN(mc.movement_counter) AS movement_counter_delta,
-             -- Derived fields calculated during aggregation
-             ROUND(AVG(mc.absolute_humidity), 4)                        AS absolute_humidity,
-             ROUND(AVG(mc.dew_point), 4)                                AS dew_point,
-             ROUND(AVG(mc.frost_point), 4)                              AS frost_point,
-             ROUND(AVG(mc.vapor_pressure_deficit), 4)                   AS vapor_pressure_deficit,
-             ROUND(AVG(mc.battery_percentage), 3)                       AS battery_percentage,
+                                       absolute_humidity, absolute_humidity_min, absolute_humidity_max,
+                                       dew_point, dew_point_min, dew_point_max,
+                                       frost_point, frost_point_min, frost_point_max,
+                                       vapor_pressure_deficit, vapor_pressure_deficit_min, vapor_pressure_deficit_max,
+                                       battery_percentage)
+      SELECT DATE_FORMAT(mc.ts, '%Y-%m-%d %H:00:00')                    AS ts_hour,
+             mc.device_fk,
+             COUNT(*)                                                   AS sample_count,
+             -- Rssi
+             AVG(mc.rssi)                                               AS rssi,
              ROUND(MIN(mc.rssi), 4)                                     AS rssi_min,
              ROUND(MAX(mc.rssi), 4)                                     AS rssi_max,
+             -- Temperature
+             ROUND(AVG(mc.temperature), 4)                              AS temperature,
              ROUND(MIN(mc.temperature), 4)                              AS temperature_min,
              ROUND(MAX(mc.temperature), 4)                              AS temperature_max,
+             -- Humidity
+             ROUND(AVG(mc.humidity), 4)                                 AS humidity,
              ROUND(MIN(mc.humidity), 4)                                 AS humidity_min,
              ROUND(MAX(mc.humidity), 4)                                 AS humidity_max,
+             -- Pressure
+             AVG(mc.pressure)                                           AS pressure,
              ROUND(MIN(mc.pressure), 4)                                 AS pressure_min,
              ROUND(MAX(mc.pressure), 4)                                 AS pressure_max,
+             -- Acceleration X
+             ROUND(AVG(mc.acceleration_x), 4)                           AS acceleration_x,
              ROUND(MIN(mc.acceleration_x), 4)                           AS acceleration_x_min,
              ROUND(MAX(mc.acceleration_x), 4)                           AS acceleration_x_max,
+             -- Acceleration Y
+             ROUND(AVG(mc.acceleration_y), 4)                           AS acceleration_y,
              ROUND(MIN(mc.acceleration_y), 4)                           AS acceleration_y_min,
              ROUND(MAX(mc.acceleration_y), 4)                           AS acceleration_y_max,
+             -- Acceleration Z
+             ROUND(AVG(mc.acceleration_z), 4)                           AS acceleration_z,
              ROUND(MIN(mc.acceleration_z), 4)                           AS acceleration_z_min,
              ROUND(MAX(mc.acceleration_z), 4)                           AS acceleration_z_max,
+             -- Acceleration total
+             ROUND(AVG(mc.acceleration_total), 4)                       AS acceleration_total,
              ROUND(MIN(mc.acceleration_total), 4)                       AS acceleration_total_min,
              ROUND(MAX(mc.acceleration_total), 4)                       AS acceleration_total_max,
+             -- Battery voltage
+             ROUND(AVG(mc.battery_voltage), 3)                          AS battery_voltage,
+             -- Movement counter delta
+             MAX(mc.movement_counter) - MIN(mc.movement_counter) AS movement_counter_delta,
+             -- Absolute humidity
+             ROUND(AVG(mc.absolute_humidity), 4)                        AS absolute_humidity,
              ROUND(MIN(mc.absolute_humidity), 4)                        AS absolute_humidity_min,
              ROUND(MAX(mc.absolute_humidity), 4)                        AS absolute_humidity_max,
+             -- Dew point
+             ROUND(AVG(mc.dew_point), 4)                                AS dew_point,
              ROUND(MIN(mc.dew_point), 4)                                AS dew_point_min,
              ROUND(MAX(mc.dew_point), 4)                                AS dew_point_max,
+             -- Frost point
+             ROUND(AVG(mc.frost_point), 4)                              AS frost_point,
              ROUND(MIN(mc.frost_point), 4)                              AS frost_point_min,
              ROUND(MAX(mc.frost_point), 4)                              AS frost_point_max,
+             -- Vapor pressure deficit
+             ROUND(AVG(mc.vapor_pressure_deficit), 4)                   AS vapor_pressure_deficit,
              ROUND(MIN(mc.vapor_pressure_deficit), 4)                   AS vapor_pressure_deficit_min,
-             ROUND(MAX(mc.vapor_pressure_deficit), 4)                   AS vapor_pressure_deficit_max
+             ROUND(MAX(mc.vapor_pressure_deficit), 4)                   AS vapor_pressure_deficit_max,
+              -- Battery percentage
+             ROUND(AVG(mc.battery_percentage), 3)                       AS battery_percentage
       FROM measurements_calculated mc
       WHERE
         -- Only full hours (not the current hour)
@@ -82,9 +89,8 @@ async function runDownsample(): Promise<void> {
         -- Only the hours that have not yet been added up
         AND DATE_FORMAT(mc.ts, '%Y-%m-%d %H:00:00') NOT IN (SELECT ts_hour
                                                             FROM measurements_hourly
-                                                            WHERE device_id = mc.device_id)
-      GROUP BY DATE_FORMAT(mc.ts, '%Y-%m-%d %H:00:00'),
-               mc.gateway_id, mc.gateway_name, mc.device_id, mc.device_name
+                                                            WHERE device_fk = mc.device_fk)
+      GROUP BY DATE_FORMAT(mc.ts, '%Y-%m-%d %H:00:00'), mc.device_fk
       ON DUPLICATE KEY UPDATE sample_count    = VALUES(sample_count),
                               rssi            = VALUES(rssi),
                               rssi_min        = VALUES(rssi_min),
