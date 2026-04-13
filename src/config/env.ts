@@ -13,7 +13,10 @@ function parseMacMap(envVar: string | undefined): Record<string, string> {
     return {};
   }
 }
-
+function toBoolean(value: string | undefined, defaultValue = false): boolean {
+  if (value === undefined) return defaultValue;
+  return value.toLowerCase() === 'true';
+}
 const configSchema = z.object({
   gwCfg: z.object({
     user: z.string().optional(),
@@ -68,7 +71,7 @@ export const config = configSchema.parse({
   gwCfg: {
     user: process.env.GW_CFG_USER ?? 'ruuvi-cfg',
     password: process.env.GW_CFG_PASSWORD ?? '',
-    bearerToken: process.env.GW_CFG_PASSWORD ?? '',
+    bearerToken: process.env.GW_CFG_BEARER_TOKEN ?? '',
   },
   mqtt: {
     protocol: process.env.MQTT_PROTOCOL ?? 'mqtt',
@@ -80,7 +83,7 @@ export const config = configSchema.parse({
     ca: process.env.MQTT_CA ? fs.readFileSync(process.env.MQTT_CA) : undefined,
     cert: process.env.MQTT_CERT ? fs.readFileSync(process.env.MQTT_CERT) : undefined,
     key: process.env.MQTT_KEY ? fs.readFileSync(process.env.MQTT_KEY) : undefined,
-    rejectUnauthorized: process.env.MQTT_REJECT_UNAUTHORIZED === 'true',
+    rejectUnauthorized: toBoolean(process.env.MQTT_REJECT_UNAUTHORIZED),
   },
   storageBackend: (process.env.STORAGE_BACKEND ?? 'both') as 'influxdb' | 'mariadb' | 'both',
   influx: {
@@ -97,11 +100,11 @@ export const config = configSchema.parse({
     database: process.env.MARIA_DATABASE ?? 'ruuvi',
   },
   mariaRetention: {
-    enabled: process.env.MARIA_RETENTION_ENABLED === 'true',
+    enabled: toBoolean(process.env.MARIA_RETENTION_ENABLED),
     retentionDays: Number(process.env.MARIA_RETENTION_DAYS ?? 730),
-    downsampleEnabled: process.env.MARIA_DOWNSAMPLE_ENABLED === 'true',
+    downsampleEnabled: toBoolean(process.env.MARIA_DOWNSAMPLE_ENABLED),
     downsampleRetentionDays: Number(process.env.MARIA_DOWNSAMPLE_RETENTION_DAYS ?? 1095),
-    downsampleDeleteRaw: process.env.MARIA_DOWNSAMPLE_DELETE_RAW === 'false',
+    downsampleDeleteRaw: toBoolean(process.env.MARIA_DOWNSAMPLE_DELETE_RAW),
     maintenanceIntervalHours: Number(process.env.MARIA_MAINTENANCE_INTERVAL_HOURS ?? 6),
   },
   mariaBufferSize: Number(process.env.MARIA_BUFFER_SIZE ?? 100),
