@@ -145,8 +145,14 @@ SELECT m.id,
        m.measurement_sequence_number,
        m.data_format,
        -- Saturation vapour pressure (Pa) — Magnus's formula
-       611.2 * EXP((17.625 * m.temperature) / (243.04 + m.temperature))
-                                                                                                       AS equilibrium_vapor_pressure,
+       611.2 * EXP((17.625 * m.temperature) / (243.04 + m.temperature))                               AS equilibrium_vapor_pressure,
+       m.pressure / 100                                                                               AS pressure_hectopascals,
+       m.pressure / 133.322                                                                           AS pressure_millimeters_of_mercury,
+       m.pressure / 3386.39                                                                           AS pressure_inches_of_mercury,
+
+       -- Vapour pressure deficit — VPD (kPa)
+       -- Ideal greenhouse conditions: 0.8–1.2 kPa
+       (611.2 * EXP((17.625 * m.temperature) / (243.04 + m.temperature)) * (1 - m.humidity / 100)) / 1000  AS vapor_pressure_deficit,
 
        -- Dew point (°C) — Magnus's formula
        -- Valid for T ≥ 0°C
@@ -179,11 +185,6 @@ SELECT m.id,
            (m.humidity / 100) * 611.2 * EXP((17.625 * m.temperature) / (243.04 + m.temperature))
                / (461.5 * (m.temperature + 273.15))
            )                                                                                           AS air_density,
-
-       -- Vapour pressure deficit — VPD (kPa)
-       -- Ideal greenhouse conditions: 0.8–1.2 kPa
-       (611.2 * EXP((17.625 * m.temperature) / (243.04 + m.temperature)) * (1 - m.humidity / 100)) / 1000
-                                                                                                       AS vapor_pressure_deficit,
 
        -- Acceleration vector standard (g)
        SQRT(
